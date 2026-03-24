@@ -76,6 +76,37 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: model-artifacts
+          path: .
+      
+      - name: Debug - Check directory structure
+        run: |
+          echo "=== Current Directory ==="
+          pwd
+          echo ""
+          echo "=== Files in Current Directory ==="
+          ls -la
+          echo ""
+          echo "=== Directory Tree (3 levels) ==="
+          find . -maxdepth 3 -type d | sort
+          echo ""
+          echo "=== All Files Recursively (3 levels) ==="
+          find . -maxdepth 3 -type f | sort
+          echo ""
+          echo "=== Checking for model_info.txt ==="
+          if [ -f model_info.txt ]; then
+            echo "✓ model_info.txt found in current directory"
+            echo "  Content: $(cat model_info.txt)"
+          else
+            echo "✗ model_info.txt NOT found in current directory"
+          fi
+          echo ""
+          echo "=== Checking for mlruns directory ==="
+          if [ -d mlruns ]; then
+            echo "✓ mlruns directory found"
+            find mlruns -maxdepth 2 -type f | head -10
+          else
+            echo "✗ mlruns directory NOT found"
+          fi
       
       - name: Check accuracy threshold
         run: |
