@@ -48,10 +48,14 @@ jobs:
       - name: Upload model info artifact
         uses: actions/upload-artifact@v4
         with:
-          name: model-artifacts
-          path: |
-            model_info.txt
-            mlruns/
+          name: model-info
+          path: model_info.txt
+      
+      - name: Upload mlruns artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlruns-artifact
+          path: mlruns/
   
   deploy:
     name: Deploy Model
@@ -75,37 +79,68 @@ jobs:
       - name: Download model info artifact
         uses: actions/download-artifact@v4
         with:
-          name: model-artifacts
+          name: model-info
+          path: .
+      
+      - name: Download mlruns artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: mlruns-artifact
           path: .
       
       - name: Debug - Check directory structure
         run: |
-          echo "=== Current Directory ==="
+          echo "=== pwd ==="
           pwd
           echo ""
-          echo "=== Files in Current Directory ==="
+          echo "=== ls -la ==="
           ls -la
           echo ""
-          echo "=== Directory Tree (3 levels) ==="
-          find . -maxdepth 3 -type d | sort
+          echo "=== find . -maxdepth 5 -type d ==="
+          find . -maxdepth 5 -type d | sort
           echo ""
-          echo "=== All Files Recursively (3 levels) ==="
-          find . -maxdepth 3 -type f | sort
-          echo ""
-          echo "=== Checking for model_info.txt ==="
-          if [ -f model_info.txt ]; then
-            echo "✓ model_info.txt found in current directory"
-            echo "  Content: $(cat model_info.txt)"
+          echo "=== find . -maxdepth 5 -type f ==="
+          find . -maxdepth 5 -type f | sort
+      
+      - name: Normalize artifacts
+        run: |
+          echo "=== Normalizing downloaded artifacts ==="
+          
+          # Handle nested mlruns directory
+          if [ -d "mlruns-artifact" ]; then
+            echo "Found nested mlruns-artifact folder, moving to mlruns..."
+            if [ -d "mlruns" ]; then
+              rm -rf mlruns
+            fi
+            mv mlruns-artifact mlruns
+            echo "✓ mlruns directory normalized"
+          elif [ -d "mlruns" ]; then
+            echo "✓ mlruns directory already in correct location"
           else
-            echo "✗ model_info.txt NOT found in current directory"
+            echo "✗ WARNING: No mlruns directory found"
           fi
-          echo ""
-          echo "=== Checking for mlruns directory ==="
-          if [ -d mlruns ]; then
-            echo "✓ mlruns directory found"
-            find mlruns -maxdepth 2 -type f | head -10
+          
+          # Handle nested model_info.txt
+          if [ -f "model_info.txt" ]; then
+            echo "✓ model_info.txt already in correct location"
+          elif [ -f "model-info/model_info.txt" ]; then
+            echo "Found nested model_info.txt, copying to current directory..."
+            cp model-info/model_info.txt .
+            echo "✓ model_info.txt copied to current directory"
           else
-            echo "✗ mlruns directory NOT found"
+            echo "✗ WARNING: model_info.txt not found in expected locations"
+          fi
+          
+          # Verify final state
+          echo ""
+          echo "=== Verification ==="
+          if [ -f "model_info.txt" ]; then
+            echo "✓ model_info.txt exists"
+            echo "  Content: $(cat model_info.txt)"
+          fi
+          if [ -d "mlruns" ]; then
+            echo "✓ mlruns directory exists"
+            ls -la mlruns/ | head -5
           fi
       
       - name: Check accuracy threshold
