@@ -3,8 +3,8 @@ from mlflow.tracking import MlflowClient
 import os
 import sys
 
-# Set MLflow tracking URI from environment variable
-mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
+# Set MLflow tracking URI to local file-based storage
+mlflow.set_tracking_uri("file:./mlruns")
 
 # Read run ID from file
 if not os.path.exists('model_info.txt'):
