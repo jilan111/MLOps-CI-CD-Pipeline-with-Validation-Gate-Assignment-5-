@@ -6,13 +6,12 @@ on:
   pull_request:
     branches: [main]
 
-env:
-  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-
 jobs:
   validate:
     name: Validate Model
     runs-on: ubuntu-latest
+    env:
+      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
     
     steps:
       - name: Checkout code
@@ -39,8 +38,6 @@ jobs:
       - name: Train model
         run: |
           python train.py
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
       
       - name: Verify model_info.txt was created
         run: |
@@ -60,6 +57,8 @@ jobs:
     name: Deploy Model
     runs-on: ubuntu-latest
     needs: validate
+    env:
+      MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
     
     steps:
       - name: Checkout code
@@ -83,8 +82,6 @@ jobs:
       - name: Check accuracy threshold
         run: |
           python check_threshold.py
-        env:
-          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
       
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

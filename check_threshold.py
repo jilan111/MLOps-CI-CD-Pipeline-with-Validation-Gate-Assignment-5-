@@ -1,10 +1,10 @@
 import mlflow
+from mlflow.tracking import MlflowClient
 import os
 import sys
 
-# Get MLflow tracking URI from environment
-mlflow_uri = os.getenv('MLFLOW_TRACKING_URI', 'http://localhost:5000')
-mlflow.set_tracking_uri(mlflow_uri)
+# Set MLflow tracking URI from environment variable
+mlflow.set_tracking_uri(os.environ["MLFLOW_TRACKING_URI"])
 
 # Read run ID from file
 if not os.path.exists('model_info.txt'):
@@ -16,9 +16,10 @@ with open('model_info.txt', 'r') as f:
 
 print(f"Checking accuracy for Run ID: {run_id}")
 
-# Get the run from MLflow
+# Get the run from MLflow using MlflowClient
 try:
-    run = mlflow.get_run(run_id)
+    client = MlflowClient()
+    run = client.get_run(run_id)
     accuracy = run.data.metrics.get('accuracy', 0)
     
     print(f"Accuracy: {accuracy}")
