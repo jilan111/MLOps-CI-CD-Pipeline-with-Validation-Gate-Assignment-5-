@@ -37,6 +37,10 @@ jobs:
         run: |
           python train.py
       
+      - name: Archive MLflow local store
+        run: |
+          tar -czf mlruns.tar.gz mlruns
+      
       - name: Verify model_info.txt was created
         run: |
           if [ ! -f model_info.txt ]; then
@@ -51,11 +55,11 @@ jobs:
           name: model-info
           path: model_info.txt
       
-      - name: Upload mlruns artifact
+      - name: Upload mlruns archive artifact
         uses: actions/upload-artifact@v4
         with:
-          name: mlruns-artifact
-          path: mlruns/
+          name: mlruns-archive
+          path: mlruns.tar.gz
   
   deploy:
     name: Deploy Model
@@ -82,65 +86,44 @@ jobs:
           name: model-info
           path: .
       
-      - name: Download mlruns artifact
+      - name: Download mlruns archive artifact
         uses: actions/download-artifact@v4
         with:
-          name: mlruns-artifact
+          name: mlruns-archive
           path: .
       
-      - name: Debug - Check directory structure
+      - name: Extract MLflow local store archive
         run: |
-          echo "=== pwd ==="
+          tar -xzf mlruns.tar.gz
+      
+      - name: Debug - Check directory structure before threshold check
+        run: |
           pwd
-          echo ""
-          echo "=== ls -la ==="
           ls -la
-          echo ""
-          echo "=== find . -maxdepth 5 -type d ==="
           find . -maxdepth 5 -type d | sort
-          echo ""
-          echo "=== find . -maxdepth 5 -type f ==="
           find . -maxdepth 5 -type f | sort
       
       - name: Normalize artifacts
         run: |
-          echo "=== Normalizing downloaded artifacts ==="
+          echo "=== Verifying artifact structure ==="
           
-          # Handle nested mlruns directory
-          if [ -d "mlruns-artifact" ]; then
-            echo "Found nested mlruns-artifact folder, moving to mlruns..."
-            if [ -d "mlruns" ]; then
-              rm -rf mlruns
-            fi
-            mv mlruns-artifact mlruns
-            echo "✓ mlruns directory normalized"
-          elif [ -d "mlruns" ]; then
-            echo "✓ mlruns directory already in correct location"
-          else
-            echo "✗ WARNING: No mlruns directory found"
-          fi
-          
-          # Handle nested model_info.txt
+          # Verify model_info.txt exists
           if [ -f "model_info.txt" ]; then
-            echo "✓ model_info.txt already in correct location"
-          elif [ -f "model-info/model_info.txt" ]; then
-            echo "Found nested model_info.txt, copying to current directory..."
-            cp model-info/model_info.txt .
-            echo "✓ model_info.txt copied to current directory"
-          else
-            echo "✗ WARNING: model_info.txt not found in expected locations"
-          fi
-          
-          # Verify final state
-          echo ""
-          echo "=== Verification ==="
-          if [ -f "model_info.txt" ]; then
-            echo "✓ model_info.txt exists"
+            echo "✓ model_info.txt is in correct location"
             echo "  Content: $(cat model_info.txt)"
+          else
+            echo "✗ ERROR: model_info.txt not found"
+            exit 1
           fi
+          
+          # Verify mlruns directory exists
           if [ -d "mlruns" ]; then
-            echo "✓ mlruns directory exists"
+            echo "✓ mlruns directory is in correct location"
+            echo "  Contents:"
             ls -la mlruns/ | head -5
+          else
+            echo "✗ ERROR: mlruns directory not found"
+            exit 1
           fi
       
       - name: Check accuracy threshold
