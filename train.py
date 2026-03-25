@@ -9,7 +9,6 @@ from sklearn.metrics import accuracy_score
 mlflow.set_tracking_uri("file:./mlruns")
 mlflow.set_experiment('model-training')
 
-# Load data
 iris = load_iris()
 X = iris.data
 y = iris.target
