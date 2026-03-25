@@ -2,7 +2,7 @@ import mlflow
 import mlflow.sklearn
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.dummy import DummyClassifier
 from sklearn.metrics import accuracy_score
 
 # Set MLflow tracking URI to local file-based storage
@@ -21,8 +21,8 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 # Train model
 with mlflow.start_run() as run:
-    # Train a RandomForestClassifier
-    model = RandomForestClassifier(n_estimators=100, random_state=42)
+    # Train a DummyClassifier (weak model for testing)
+    model = DummyClassifier(strategy="most_frequent")
     model.fit(X_train, y_train)
     
     # Evaluate
