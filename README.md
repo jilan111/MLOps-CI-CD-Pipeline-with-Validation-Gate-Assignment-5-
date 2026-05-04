@@ -1,147 +1,61 @@
-# Assignment 5: MLOps Pipeline - Model Validation and Deployment
+# MLOps Validation Gate
 
-This project implements a two-job GitHub Actions pipeline that validates a machine learning model and deploys it via Docker based on performance criteria.
+Two-stage GitHub Actions pipeline that **trains a model**, **validates it against an accuracy threshold**, and **only then containerizes it for deployment**. Built around MLflow for tracking and Docker for packaging.
 
-## Project Structure
+![GitHub Actions](https://img.shields.io/badge/CI-GitHub_Actions-blue)
+![MLflow](https://img.shields.io/badge/tracking-MLflow-orange)
+![Docker](https://img.shields.io/badge/container-Docker-blue)
+
+---
+
+## Pipeline
 
 ```
-.
-├── train.py                    # Training script that logs accuracy to MLflow
-├── check_threshold.py          # Validates accuracy meets threshold (0.85)
-├── Dockerfile                  # Container for model deployment
-├── .github/workflows/pipeline.yml  # GitHub Actions workflow
-├── requirements.txt            # Python dependencies
-└── README.md                   # This file
+┌──────────────────┐      ┌──────────────────┐      ┌──────────────────┐
+│  Train (Iris,    │ ───▶ │  Validate gate   │ ───▶ │  Build Docker    │
+│  RandomForest)   │      │  accuracy ≥ 0.85 │      │  image           │
+│  → log to MLflow │      │  read MLflow run │      │  push artifact   │
+└──────────────────┘      └────────┬─────────┘      └──────────────────┘
+                                   │ fail
+                                   ▼
+                            pipeline halts
 ```
 
-## Architecture
+---
 
-### 1. Validation Job (`validate`)
-- Pulls data using `dvc pull`
-- Trains a classifier on Iris dataset
-- Logs accuracy metrics to MLflow Tracking Server
-- Creates `model_info.txt` containing the MLflow Run ID
-- Uploads artifact for use by deployment job
+## What it demonstrates
 
-### 2. Deployment Job (`deploy`)
-- Depends on successful validation job
-- Retrieves `model_info.txt` from validation job
-- Runs `check_threshold.py` to verify accuracy ≥ 0.85
-- **If threshold passes**: Builds and runs Docker image with model
-- **If threshold fails**: Pipeline exits with error
+- **Reproducible training** — RandomForestClassifier on the Iris dataset, all hyperparameters and metrics logged to MLflow
+- **Run-ID propagation** — MLflow Run ID is captured in the train job and passed as a job artifact
+- **Quality gate** — validation job pulls metrics by Run ID and enforces a configurable accuracy threshold (default 0.85)
+- **Conditional deploy** — Docker build & containerization run *only* if the gate passes
+- **Triggered automatically** on push and PR to `main`
 
-### 3. Dockerfile
-- Uses `python:3.10-slim` base image
-- Accepts `RUN_ID` as build argument
-- Simulates model deployment with echo statements
+---
 
-## Setup Instructions
-
-### 1. Local Setup (Optional, for testing)
+## Quick start
 
 ```bash
+git clone https://github.com/jilan111/mlops-validation-gate.git
+cd mlops-validation-gate
 pip install -r requirements.txt
+python train.py
 ```
 
-### 2. GitHub Configuration
+The full pipeline is defined in `.github/workflows/` and runs automatically on push.
 
-#### 2.1 Set MLflow Secret
+---
 
-GitHub Actions requires the MLflow Tracking Server URI as a secret:
-
-1. Go to your GitHub repository
-2. Settings → Secrets and variables → Actions
-3. Create new secret `MLFLOW_TRACKING_URI`
-4. Set value to your MLflow server (e.g., `http://your-server:5000`)
-
-#### 2.2 Push Code to GitHub
-
-```bash
-git add .
-git commit -m "Initial commit: MLOps pipeline"
-git branch -M main
-git remote add origin https://github.com/<your-username>/<your-repo>.git
-git push -u origin main
-```
-
-## Running the Pipeline
-
-Once pushed to GitHub, the pipeline runs automatically on:
-- Push to main branch
-- Pull requests to main branch
-
-### Expected Outcomes
-
-**Successful Run** (Accuracy ≥ 0.85):
-- ✅ Validation job trains model and logs to MLflow
-- ✅ Deployment job retrieves model info
-- ✅ Threshold check passes
-- ✅ Docker image built successfully
-- ✅ Deployment job completes
-
-**Failed Run** (Accuracy < 0.85):
-- ✅ Validation job completes successfully
-- ✅ Deployment job retrieves model info
-- ❌ Threshold check fails
-- ❌ Deployment job exits with error
-- ❌ Docker build skipped
-
-## Model Performance
-
-The current implementation uses RandomForestClassifier on the Iris dataset:
-- **Expected accuracy**: ~95%+ (easily meets 0.85 threshold)
-- **Variability**: Low due to fixed random_state
-
-To simulate failures, you can modify `train.py` to allow accuracy variations.
-
-## MLflow Tracking Server
-
-This pipeline expects an MLflow Tracking Server running. Options:
-
-### Local Testing
-```bash
-mlflow server --host 0.0.0.0 --port 5000
-```
-
-### Cloud Options
-- Databricks Community Edition (free)
-- AWS EC2 instance
-- Google Cloud Run
-- Other MLflow hosting services
-
-## Artifacts
-
-The pipeline creates and uses:
-- `model_info.txt`: Contains the MLflow Run ID
-- `mlruns/`: Local MLflow runs directory (created during local testing)
-
-## Dependencies
+## Tech stack
 
 - Python 3.10+
-- scikit-learn: Machine learning library
-- MLflow: Experiment tracking and model registry
-- DVC: Data versioning (optional)
-- Docker: For deployment containerization
+- scikit-learn (RandomForestClassifier)
+- MLflow (tracking server)
+- Docker (containerization)
+- GitHub Actions (orchestration)
 
-## Notes
+---
 
-- The Dockerfile uses echo statements to simulate model download/deployment
-- For production use, replace echo commands with actual model download logic
-- MLflow tracking server must be accessible from GitHub Actions runners
-- Use environment variables or secrets for sensitive credentials
+## Author
 
-## Troubleshooting
-
-### Pipeline shows "No remote DVC setup"
-- This is expected if you haven't configured DVC
-- The workflow gracefully continues without DVC
-
-### MLflow connection errors
-- Verify `MLFLOW_TRACKING_URI` secret is set correctly
-- Ensure MLflow server is accessible from GitHub runners
-- Check server logs for detailed error messages
-
-### Threshold check fails
-- Accuracy is below 0.85
-- Review model training in `train.py`
-- Check MLflow UI for detailed metrics
+Built by **Jilan Ismail** — [GitHub](https://github.com/jilan111) · [LinkedIn](https://www.linkedin.com/in/jilan-ismail-596b2b2b2/)
